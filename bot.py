@@ -350,8 +350,7 @@ def init_user(user_id, user_name):
             'last_activity': datetime.now().isoformat()
         }
         save_user_data(user_data)
-else:
-        # ← ДОБАВИТЬ ЭТИ 2 СТРОКИ
+    else:
         user_data[user_id]['last_activity'] = datetime.now().isoformat()
         save_user_data(user_data)
     return user_data[user_id]
