@@ -369,6 +369,10 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("ℹ️ Помощь", callback_data="help")]
     ]
     
+    # Добавляем админ кнопку только для админа
+    if user.id == ADMIN_ID:
+        keyboard.append([InlineKeyboardButton("🔧 Админ панель", callback_data="admin_panel")])
+    
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     learned_count = len(user_profile['learned_terms'])
@@ -403,6 +407,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_statistics(query, user_id)
     elif query.data == "help":
         await show_help(query)
+    elif query.data == "admin_panel":
+        await show_admin_panel(query)
     elif query.data == "next_term":
         await show_term(query, user_id)
     elif query.data == "back_main":
@@ -618,40 +624,10 @@ async def show_help(query):
     
     await query.edit_message_text(text, parse_mode='HTML', reply_markup=reply_markup)
 
-async def back_to_main(query, user_id):
-    user = query.from_user
-    user_profile = user_data[user_id]
-    
-    keyboard = [
-        [InlineKeyboardButton("📚 Изучать термины", callback_data="learn")],
-        [InlineKeyboardButton("🧠 Викторина", callback_data="quiz")],
-        [InlineKeyboardButton("📊 Статистика", callback_data="stats")],
-        [InlineKeyboardButton("ℹ️ Помощь", callback_data="help")]
-    ]
-    
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    learned_count = len(user_profile['learned_terms'])
-    total_count = len(TERMS_DATABASE)
-    accuracy = round(user_profile['quiz_stats']['correct']/max(user_profile['quiz_stats']['total'], 1)*100)
-    
-    welcome_text = f"""🚀 <b>English Terms Bot</b>
-
-Привет, {user.first_name}! 👋
-
-📈 <b>Твой прогресс:</b>
-📚 Изучено: {learned_count}/{total_count} терминов
-⭐ Очки: {user_profile['score']}
-🎯 Точность: {accuracy}%
-
-Выбери действие:"""
-    
-    await query.edit_message_text(welcome_text, parse_mode='HTML', reply_markup=reply_markup)
-
-async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Админ панель - только для администратора"""
-    if update.effective_user.id != ADMIN_ID:
-        await update.message.reply_text("❌ У вас нет доступа к админ панели.")
+async def show_admin_panel(query):
+    """Админ панель через inline кнопки"""
+    if query.from_user.id != ADMIN_ID:
+        await query.edit_message_text("❌ У вас нет доступа к админ панели.")
         return
     
     total_users = len(user_data)
@@ -684,22 +660,60 @@ async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for i, (user_id, profile) in enumerate(sorted_users, 1):
         top_users_text += f"{i}. {profile['name']} - {profile['score']} очков\n"
     
-    admin_text = f"""🔧 **АДМИН ПАНЕЛЬ**
+    admin_text = f"""🔧 <b>АДМИН ПАНЕЛЬ</b>
 
-📊 **Общая статистика:**
+📊 <b>Общая статистика:</b>
 👥 Всего пользователей: {total_users}
 🟢 Активных сегодня: {active_today}
 📝 Всего тестов пройдено: {total_queries}
 📚 Всего терминов изучено: {total_learned}
 📖 Терминов в базе: {len(TERMS_DATABASE)}
 
-🏆 **Топ-3 пользователя:**
+🏆 <b>Топ-3 пользователя:</b>
 {top_users_text if top_users_text else "Пока нет данных"}
 
-⏰ Обновлено: {datetime.now().strftime('%d.%m.%Y %H:%M')}
-    """
+⏰ <i>Обновлено: {datetime.now().strftime('%d.%m.%Y %H:%M')}</i>"""
     
-    await update.message.reply_text(admin_text, parse_mode='Markdown')
+    keyboard = [[InlineKeyboardButton("🏠 Главное меню", callback_data="back_main")]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(admin_text, parse_mode='HTML', reply_markup=reply_markup)
+
+async def back_to_main(query, user_id):
+    user = query.from_user
+    user_profile = user_data[user_id]
+    
+    keyboard = [
+        [InlineKeyboardButton("📚 Изучать термины", callback_data="learn")],
+        [InlineKeyboardButton("🧠 Викторина", callback_data="quiz")],
+        [InlineKeyboardButton("📊 Статистика", callback_data="stats")],
+        [InlineKeyboardButton("ℹ️ Помощь", callback_data="help")]
+    ]
+    
+    # Добавляем админ кнопку только для админа
+    if user.id == ADMIN_ID:
+        keyboard.append([InlineKeyboardButton("🔧 Админ панель", callback_data="admin_panel")])
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    learned_count = len(user_profile['learned_terms'])
+    total_count = len(TERMS_DATABASE)
+    accuracy = round(user_profile['quiz_stats']['correct']/max(user_profile['quiz_stats']['total'], 1)*100)
+    
+    welcome_text = f"""🚀 <b>English Terms Bot</b>
+
+Привет, {user.first_name}! 👋
+
+📈 <b>Твой прогресс:</b>
+📚 Изучено: {learned_count}/{total_count} терминов
+⭐ Очки: {user_profile['score']}
+🎯 Точность: {accuracy}%
+
+Выбери действие:"""
+    
+    await query.edit_message_text(welcome_text, parse_mode='HTML', reply_markup=reply_markup)
+
+
 
 def main():
     print('🚀 Запуск English Terms Bot...')
@@ -715,7 +729,6 @@ def main():
         application = Application.builder().token(TOKEN).build()
         
         application.add_handler(CommandHandler('start', start_command))
-        application.add_handler(CommandHandler('admin', admin_panel)) 
         application.add_handler(CallbackQueryHandler(button_handler))
         
         print('✅ English Terms Bot запущен!')
