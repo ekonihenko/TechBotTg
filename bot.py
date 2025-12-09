@@ -14,6 +14,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 TOKEN = os.getenv('BOT_TOKEN')
+ADMIN_ID = int(os.getenv('ADMIN_ID', '0'))
 print(f'📱 Токен загружен: {TOKEN[:10] if TOKEN else "НЕ НАЙДЕН"}...')
 
 # База данных терминов
@@ -345,8 +346,13 @@ def init_user(user_id, user_name):
                 'best_streak': 0
             },
             'score': 0,
-            'join_date': datetime.now().isoformat()
+            'join_date': datetime.now().isoformat(),
+            'last_activity': datetime.now().isoformat()
         }
+        save_user_data(user_data)
+else:
+        # ← ДОБАВИТЬ ЭТИ 2 СТРОКИ
+        user_data[user_id]['last_activity'] = datetime.now().isoformat()
         save_user_data(user_data)
     return user_data[user_id]
 
@@ -643,6 +649,59 @@ async def back_to_main(query, user_id):
     
     await query.edit_message_text(welcome_text, parse_mode='HTML', reply_markup=reply_markup)
 
+async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Админ панель - только для администратора"""
+    if update.effective_user.id != ADMIN_ID:
+        await update.message.reply_text("❌ У вас нет доступа к админ панели.")
+        return
+    
+    total_users = len(user_data)
+    
+    # Статистика активности
+    today = datetime.now().date()
+    active_today = 0
+    total_queries = 0
+    total_learned = 0
+    
+    for user_profile in user_data.values():
+        total_queries += user_profile['quiz_stats']['total']
+        total_learned += len(user_profile['learned_terms'])
+        
+        try:
+            last_activity = datetime.fromisoformat(user_profile['last_activity']).date()
+            if last_activity == today:
+                active_today += 1
+        except:
+            pass
+    
+    # Топ-3 активных пользователя
+    sorted_users = sorted(
+        user_data.items(), 
+        key=lambda x: x[1]['score'], 
+        reverse=True
+    )[:3]
+    
+    top_users_text = ""
+    for i, (user_id, profile) in enumerate(sorted_users, 1):
+        top_users_text += f"{i}. {profile['name']} - {profile['score']} очков\n"
+    
+    admin_text = f"""🔧 **АДМИН ПАНЕЛЬ**
+
+📊 **Общая статистика:**
+👥 Всего пользователей: {total_users}
+🟢 Активных сегодня: {active_today}
+📝 Всего тестов пройдено: {total_queries}
+📚 Всего терминов изучено: {total_learned}
+📖 Терминов в базе: {len(TERMS_DATABASE)}
+
+🏆 **Топ-3 пользователя:**
+{top_users_text if top_users_text else "Пока нет данных"}
+
+⏰ Обновлено: {datetime.now().strftime('%d.%m.%Y %H:%M')}
+    """
+    
+    await update.message.reply_text(admin_text, parse_mode='Markdown')
+
 def main():
     print('🚀 Запуск English Terms Bot...')
     print('📚 База данных: 30 терминов')
@@ -657,6 +716,7 @@ def main():
         application = Application.builder().token(TOKEN).build()
         
         application.add_handler(CommandHandler('start', start_command))
+        application.add_handler(CommandHandler('admin', admin_panel)) 
         application.add_handler(CallbackQueryHandler(button_handler))
         
         print('✅ English Terms Bot запущен!')
