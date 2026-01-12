@@ -17,6 +17,11 @@ TOKEN = os.getenv('BOT_TOKEN')
 ADMIN_ID = int(os.getenv('ADMIN_ID', '0'))
 print(f'📱 Токен загружен: {TOKEN[:10] if TOKEN else "НЕ НАЙДЕН"}...')
 
+# 🔧 ДОБАВЛЕНО: Путь к файлу данных с поддержкой Volume
+DATA_DIR = '/app/data' if os.path.exists('/app/data') else '.'
+USER_DATA_FILE = os.path.join(DATA_DIR, 'users.json')
+
+
 # База данных терминов
 TERMS_DATABASE = [
     {'en': 'backbone', 'ru': 'основа, опора, суть; магистраль', 'example_en': 'This server is the backbone of our network', 'example_ru': 'Этот сервер - основа нашей сети'},
@@ -362,7 +367,7 @@ TERMS_DATABASE = [
 ]
 
 # Файл для сохранения данных пользователей
-USER_DATA_FILE = 'users.json'
+
 
 def load_user_data():
     try:
