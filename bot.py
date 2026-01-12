@@ -619,12 +619,12 @@ async def show_statistics(query, user_id):
     progress_percentage = round(learned_count / total_count * 100)
     accuracy = round(user_profile['quiz_stats']['correct']/max(user_profile['quiz_stats']['total'], 1)*100)
     
-    # Определяем уровень
-    if learned_count >= 25:
+    # 🔧 ИСПРАВЛЕННАЯ система уровней
+    if learned_count >= 300:
         level = "🏆 Эксперт"
-    elif learned_count >= 15:
+    elif learned_count >= 200:
         level = "🥈 Продвинутый"
-    elif learned_count >= 8:
+    elif learned_count >= 100:
         level = "🥉 Изучающий"
     else:
         level = "🌱 Новичок"
